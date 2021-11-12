@@ -1,0 +1,626 @@
+---
+title: "Modeling High Risk PAID Scores of Participants in Diabetes Self-Management Program"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## Project Motivation
+
+Type 2 Diabetes is a chronic metabolic disorder that affects many
+Americans characterized by high blood glucose levels through insulin
+resistance. It can lead to complications elsewhere in the body, such as
+retinopathies, kidney failure, and amputation of limbs due to poor wound
+healing. Within the United States, T2 Diabetes affects 26 million
+people. ([NIH T2
+Diabetes](https://www.nih.gov/research-training/accelerating-medicines-partnership-amp/type-2-diabetes)).
+
+As of 2017, the annual burden of diabetes treatment on the US healthcare
+system is approximately 327 billion USD. Of this approximation, 237
+billion USD is associated with direct medical costs, including inpatient
+hospital treatment, prescriptions and medical supplies, and outpatient
+visits. ([American Diabetes Association
+Stats](https://www.diabetes.org/resources/statistics/cost-diabetes)).
+
+The Problem Areas in Diabetes (PAID) questionnaire is a short,
+self-guided questionnaire completed by patients with diabetes. The PAID
+questionnaire is a robust measure that can evaluate emotional distress
+as well as predict future blood glucose control in patients with
+diabetes. The questionnaire is scored on a scale from 0-100; scores of
+40 and higher are strongly associated with emotional burnout, while
+scores below 10 with poor glucose control are associated with patients
+in denial of their condition. ([PAID Questionnaire
+UConn](https://www.huskyhealthct.org/providers/provider_postings/diabetes/PAID_problem_areas_in_diabetes_questionnaire.pdf)).
+
+```{r Setup, message=FALSE, include=FALSE}
+library(tidyverse)
+library(fastDummies)
+library(caret)
+library(magrittr)
+library(MLeval)
+library(microbenchmark)
+library(tictoc)
+
+set.seed(17)
+
+diabetes_raw <- read_csv(
+  "diabetes_self_management.csv",
+  col_names = c("class", "class_lang","age", "year","gender", "insurance", "medical_home","ethnicity","education_max", "diabetes", "heart_disease","high_blood_pressure","tobacco_use","previous_diabetes_education","diabetes_knowledge","fruit_veg_freq_daily", "sugary_bev_freq_daily", "food_measurement_freq_weekly", "carb_counting_freq_weekly", "exercise_freq_weekly","PAID_score"),
+  col_types = list(
+    age = col_integer(),
+    year = col_integer(),
+    PAID_score = col_double(),
+    diabetes_knowledge = col_factor(levels = c("Poor", "Fair", "Good"))
+    ),
+  skip = 1
+  )
+```
+
+## Exploratory Data Analysis
+
+```{r Cleaning, include=FALSE}
+diabetes_recoded <- diabetes_raw %>%
+  mutate(gender = fct_recode(gender,"F" = "f"),
+         gender = as.character(gender),
+         insurance = str_replace_all(insurance, "MediCARE", "MC"),
+         insurance = str_replace_all(insurance, "Medicaid", "MA"),
+         insurance = str_replace_all(insurance, "Private insurance", "Private"),
+         ethnicity = na_if(ethnicity, "Unknown"),
+         diabetes = na_if(diabetes, "Unknown"),
+         medical_home = fct_recode(medical_home, "No regular place of care" = "Emergency Room"),
+         fruit_veg_freq_daily = na_if(fruit_veg_freq_daily, "Not Sure"),
+         fruit_veg_freq_daily = fct_relevel(fruit_veg_freq_daily, levels = c("0","1-2","3-4","5 or more")),
+         sugary_bev_freq_daily = na_if(sugary_bev_freq_daily, "Not Sure"),
+         sugary_bev_freq_daily = fct_relevel(sugary_bev_freq_daily, levels = c("0","1","2","3 or more")),
+         food_measurement_freq_weekly = na_if(food_measurement_freq_weekly, "Not Sure"),
+         food_measurement_freq_weekly = fct_collapse(food_measurement_freq_weekly, "0" = c("I don't know how", "0 days")),
+         food_measurement_freq_weekly = fct_relevel(food_measurement_freq_weekly,levels = c("0","1-3","4 or more")),
+         carb_counting_freq_weekly = na_if(carb_counting_freq_weekly, "Not Sure"),
+         carb_counting_freq_weekly = fct_collapse(carb_counting_freq_weekly, "0" = c("I don't know how", "0 days")),
+         carb_counting_freq_weekly = fct_relevel(carb_counting_freq_weekly,levels = c("0", "1-3","4 or more")),
+         exercise_freq_weekly = na_if(exercise_freq_weekly, "Not Sure"),
+         exercise_freq_weekly = str_replace_all(exercise_freq_weekly, "days",""),
+         exercise_freq_weekly = str_replace_all(exercise_freq_weekly, "day",""),
+         exercise_freq_weekly = fct_relevel(exercise_freq_weekly, levels = c("0 ", "1", "2", "3", "4", "5 or more"))
+  ) %>%
+  mutate(low_income = ifelse(insurance == "MA" | insurance == "MAP", "Yes", "No"),
+         PAID_high_risk = ifelse(PAID_score >= 40, "Yes", "No")
+         ) %>%
+  relocate(low_income, .after = insurance) %>%
+  mutate(
+    has_pcp = ifelse(medical_home == "No regular place of care", "No", "Yes")) %>%
+  relocate(has_pcp, .after = medical_home)
+```
+
+```{r Data Dictionary, echo=FALSE}
+
+data_dictionary <- tribble(
+  ~Variable, ~Definition, ~Type,
+  #--|----|----
+  "class","Diabetes self-management class code", "character",
+  "class_lang", "Language of diabetes self-management class", "character",
+  "age", "Age of participant", "numeric",
+  "year", "Year that survey was completed", "numeric",
+  "gender", "Gender of participant", "character",
+  "insurance", "Type of insurance held by participant", "character",
+  "medical_home", "Place of primary/regular medical care", "character",
+  "ethnicity", "Ethnicity of participant", "character",
+  "education_max", "Highest completed education level of participant", "character",
+  "diabetes", "Does the participant have diabetes?", "character",
+  "heart_disease", "Does the participant have heart disease?", "character",
+  "tobacco_use", "Does the participant use tobacco products?", "character",
+  "previous_diabetes_education", "Has the participant received diabetes education in the past?", "character",
+  "diabetes_knowledge", "level of participant's knowledge on diabetes", "ordered factor",
+  "fruit_veg_daily", "number of fruits/vegetables consumed daily", "character",
+  "sugary_bev_daily", "number of sugary beverages consumed daily", "character",
+  "food_measurement_weekly", "number of days per week that participant measures their food consumption", "character",
+  "carb_counting_weekly", "number of days per week that participant counts their carbohydrate consumption", "character",
+  "exercise_freq_weekly", "number of days per week that participant exercises aerobically", "character",
+  "PAID_score", "Problem Areas in Diabetes score from PAID self-questionnaire", "numeric",
+  "PAID_high_risk", "Is the PAID score considered to be high risk (equal or greater than 40)?", "character",
+  "has_pcp", "Does the participant have a primary care medical home?", "character",
+  "low_income", "Does the participant qualify for insurance for low income individuals?","character"
+  )
+
+```
+
+### Dataset description
+
+The data for this project was obtained through the [Datacamp Career Hub
+Repository](https://github.com/datacamp/careerhub-data/tree/master/Diabetes%20Self-Management).
+It is publicly sourced from Public Health Department of Austin, Texas
+through their Diabetes Self-Management Education program. Each
+observation from the data set are responses from individual participants
+who completed the program.
+
+The raw dataset contains 21 unique variables, 3 of which are numeric and
+18 that are categorical. The majority of the variables appear to be
+self-explanatory, while some are open to interpretation. I have defined
+the variables in a data dictionary below, as one was not provided with
+the dataset. For the purposes of my analysis, I have created three
+additional categorical variables, which I have also defined in the data
+dictionary. 'has_pcp' is a simplification of the 'medical_home'
+variable. It is not particularly important which specific clinic that a
+participant goes for their primary care, but rather that they *do* have
+a primary care provider with whom they can follow up regularly over
+time. Emergency rooms are acute care providers, and not primary care
+providers.
+
+'low_income' is an indicator variable which describes if the participant
+has a low income, dependent on their 'insurance' enrollment.
+Participants must have a recognized low gross income to qualify for
+either Medicaid or MAP (Medical Access Program).
+
+'PAID_high_risk' is an indicator variable dependent on the 'PAID_score'
+of the participant. Without any data to assess a participant's glucose
+control, it is difficult to assess whether a participant is in denial of
+their condition. A 'PAID_score' \>= 40 is considered to be high risk, as
+it is shown to indicate emotional burnout in a participant. For this
+analysis, 'PAID_high_risk' will be the response variable for
+classification.
+
+There are 1688 observations in this dataset.
+
+However, across the dataset, there are many variables with missing
+values. Some of these values are missing not at random and can be
+explained. Cases where the participant does not have diabetes will not
+have a PAID score, and can not have their risk evaluated. Similarly,
+variables such as 'has_pcp' and 'low_income' are dependent on
+'medical_home' and 'insurance', respectively, and will therefore have
+the same missing values as their parent columns.
+
+However, the remaining missing values are of unknown nature. The raw
+dataset did not provide any guidance on the interpretation of these
+missing values. Dropping observations with any missing values will
+deplete the dataset drastically. One-hot encoding will be the better
+option to pursue here, including "variable_NA" columns to possibly
+identify any other variables with missing not at random values.
+
+```{r dimensions}
+#dimensions of data frame
+dim(diabetes_recoded)
+
+#missing values for each column
+missing_values <- diabetes_recoded %>% 
+  select(everything()) %>%
+  summarize_all(funs(sum(is.na(.))))
+
+
+```
+
+### Exploratory Data Analysis
+
+```{r EDA}
+#diabetes status distribution
+diabetes_recoded %>% 
+  ggplot(aes(x = diabetes)) + geom_bar()
+
+#high-risk patients
+diabetes_recoded %>% 
+  ggplot(aes(x = PAID_high_risk, fill = diabetes)) + geom_bar(position = "dodge")
+
+#medical_home distribution
+diabetes_recoded %>%
+  ggplot(aes(x = medical_home, fill = diabetes)) + geom_bar() + coord_flip()
+
+diabetes_recoded %>%
+  ggplot(aes(x = has_pcp)) + geom_bar(position = "dodge") + facet_wrap(~ diabetes)
+
+#insurance distribution
+diabetes_recoded %>%
+  ggplot(aes(x = insurance)) + geom_bar() + coord_flip()
+
+diabetes_recoded %>%
+  ggplot(aes(x = low_income, fill = diabetes)) + geom_bar(position = "dodge")
+
+#class distribution
+diabetes_recoded %>%
+  ggplot(aes(x = diabetes, fill = class)) + geom_bar(position = "dodge")
+
+#class_lang distribution
+diabetes_recoded %>%
+  ggplot(aes(x = diabetes, fill = class_lang)) + geom_bar(position = "dodge")
+
+#age distribution
+diabetes_recoded %>%
+  filter(!is.na(gender), !is.na(age)) %>%
+  ggplot(aes(x = age, color = gender)) + geom_bar() +
+  facet_wrap(~ diabetes)
+
+#ethnicity distribution
+diabetes_recoded %>%
+  ggplot(aes(x = ethnicity, fill = diabetes)) + geom_bar(position = "dodge") +
+  coord_flip()
+
+```
+
+```{r}
+
+
+#valid PAID scores
+diabetes_recoded %>% 
+  filter(!is.na(PAID_score)) %>%
+  count()
+
+diabetes_recoded %>%
+  ggplot(aes(x = PAID_score, fill = PAID_high_risk)) + geom_bar() +
+  geom_vline(xintercept = 40)
+
+
+
+#age distribution by gender of diabetes patients
+diabetes_recoded %>% 
+  filter(diabetes == "Yes", !is.na(gender)) %>%
+  ggplot(aes(x = gender, y = age)) + geom_boxplot() + coord_flip()
+
+
+```
+
+## Model Development
+
+```{r Treating}
+#creating separate data frame for response variable
+diabetes_treated_y <- diabetes_recoded %>%
+  select(PAID_high_risk)
+
+#one-hot encoding character variables
+charvars <- c("ethnicity", "diabetes", "heart_disease", "high_blood_pressure", "tobacco_use", "previous_diabetes_education", "insurance", "gender", "has_pcp", "low_income")
+
+characters <- diabetes_recoded %>%
+  select(all_of(charvars)) %>%
+  dummy_cols() %>%
+  select(-all_of(charvars))
+
+#one-hot encoding ordinal variables
+ordvars <- c("education_max", "diabetes_knowledge", "fruit_veg_freq_daily", "sugary_bev_freq_daily", "food_measurement_freq_weekly", "carb_counting_freq_weekly", "exercise_freq_weekly")
+level <- c("0","1","2")
+
+ordinals <- diabetes_recoded %>%
+  select(all_of(ordvars)) %>%
+  mutate(
+    education_max = fct_collapse(education_max,
+                                 "0" = c("1-8", "9-11", "n", "none", "y"),
+                                 "1" = c("Some College", "High School GED"),
+                                 "2" = "College"
+                                 ),
+    education_max = fct_relevel(education_max, levels = level),
+    diabetes_knowledge = fct_recode(diabetes_knowledge,
+                                    "0" = "Poor",
+                                    "1" = "Fair",
+                                    "2" = "Good"
+                                    ),
+    diabetes_knowledge = fct_relevel(diabetes_knowledge, levels = level),
+    fruit_veg_freq_daily = fct_collapse(fruit_veg_freq_daily,
+                                      "0" = c("0", "1-2"),
+                                      "1" = "3-4",
+                                      "2" = "5 or more"
+                                      ),
+    fruit_veg_freq_daily = fct_relevel(fruit_veg_freq_daily, levels = level),
+    sugary_bev_freq_daily = fct_collapse(sugary_bev_freq_daily,
+                                       "0" = "0",
+                                       "1" = c("1","2"),
+                                       "2" = "3 or more"
+                                       ),
+    sugary_bev_freq_daily = fct_relevel(sugary_bev_freq_daily, levels = level),
+    food_measurement_freq_weekly = fct_recode(food_measurement_freq_weekly,
+                                              "0" = "0",
+                                              "1" = "1-3",
+                                              "2" = "4 or more"
+                                              ),
+    food_measurement_freq_weekly = fct_relevel(food_measurement_freq_weekly, levels = level),
+    carb_counting_freq_weekly = fct_recode(carb_counting_freq_weekly,
+                                            "0" = "0",
+                                            "1" = "1-3",
+                                            "2" = "4 or more"
+                                           ),
+    carb_counting_freq_weekly = fct_relevel(carb_counting_freq_weekly, levels = level),
+    exercise_freq_weekly = str_trim(exercise_freq_weekly),
+    exercise_freq_weekly = fct_recode(exercise_freq_weekly,
+                                      "0" = "0",
+                                      "0" = "1",
+                                      "0" = "2",
+                                      "1" = "3", 
+                                      "1" = "4",
+                                      "2" = "5 or more"
+                                      ),
+    exercise_freq_weekly = fct_relevel(exercise_freq_weekly, levels = level)
+  ) %>%
+  dummy_cols() %>%
+  select(-all_of(ordvars))
+
+#bringing the tables together
+diabetes_treated_x <- diabetes_recoded %>%
+  select(-class, -class_lang, -medical_home, -PAID_score, -year) %>%
+  select(-all_of(ordvars), -all_of(charvars), -PAID_high_risk) %>%
+  bind_cols(characters, ordinals) 
+
+#converting all NAs to zeros (NAs are counted in separate columns)
+diabetes_treated_x[is.na(diabetes_treated_x)] <- 0
+
+#validating that there are no missing values
+missing_values_treated <- diabetes_treated_x %>% 
+  select(everything()) %>%
+  summarize_all(funs(sum(is.na(.))))
+
+```
+
+```{r Modeling Prep}
+#creating training set and test set
+
+diabetes_modeling_set <- bind_cols(diabetes_treated_x, diabetes_treated_y) %>%
+  filter(age != 0) %>%
+  mutate(PAID_high_risk = as_factor(PAID_high_risk))
+
+#real world test sets
+diabetes_rw <- diabetes_modeling_set %>%
+  filter(diabetes_No > 0 | diabetes_NA > 0) %>%
+  select(-diabetes_No, -diabetes_Yes, -diabetes_NA)
+
+#training sets
+diabetes_train <- diabetes_modeling_set %>%
+  filter(diabetes_Yes > 0) %>%
+  select(-diabetes_No, -diabetes_Yes, -diabetes_NA) %>%
+  filter(PAID_high_risk %in% c("Yes","No"))
+
+# diabetes_train_x <- diabetes_train %>%
+#   select(-PAID_high_risk)
+ 
+# diabetes_train_y <- diabetes_train %>%
+#   select(PAID_high_risk)
+  
+control <- trainControl(
+  method = "repeatedcv",
+  number = 10,
+  repeats = 5,
+  summaryFunction = twoClassSummary,
+  savePredictions = "final",
+  classProbs = TRUE,
+  verboseIter = FALSE
+)
+```
+
+```{r Models}
+#generating and evaluating multiple models
+
+<<<<<<< HEAD
+mbm <- microbenchmark(
+  #glm models
+  "glm_model_median" = {glm_model_median <- train(
+=======
+mbm <- microbenchmark("glm_model_median" = {glm_model_median <- train(
+>>>>>>> 2414d97447e3a142ff2267179f027eeebf2ecbaa
+  PAID_high_risk ~ .,
+  data = diabetes_train,
+  metric = "ROC",
+  method = "glm",
+  trControl = control,
+  preProcess = c("medianImpute", "center", "scale"),
+  na.action = na.pass
+<<<<<<< HEAD
+)},
+"glm_model_nzv_median" = {glm_model_nzv_median <- train(
+=======
+)}
+)
+
+#glm models
+glm_model_median <- train(
+>>>>>>> 2414d97447e3a142ff2267179f027eeebf2ecbaa
+  PAID_high_risk ~ .,
+  data = diabetes_train,
+  metric = "ROC",
+  method = "glm",
+  trControl = control,
+<<<<<<< HEAD
+  preProcess = c("nzv", "medianImpute", "center", "scale"),
+  na.action = na.pass
+)}
+=======
+  preProcess = c("medianImpute", "center", "scale"),
+  na.action = na.pass
+>>>>>>> 2414d97447e3a142ff2267179f027eeebf2ecbaa
+)
+#ROC = 0.7182
+
+# glm_model_nzv_median <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "glm",
+#   trControl = control,
+#   preProcess = c("nzv", "medianImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7099
+
+# glm_model_zv_median <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "glm",
+#   trControl = control,
+#   preProcess = c("zv", "medianImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7146
+
+# glm_model_knn <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "glm",
+#   trControl = control,
+#   preProcess = c("knnImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7156
+
+# glm_model_nzv_knn <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "glm",
+#   trControl = control,
+#   preProcess = c("nzv", "knnImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7107
+
+# glm_model_zv_knn <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "glm",
+#   trControl = control,
+#   preProcess = c("zv", "knnImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7206
+
+#glmnet
+# glmnet_model <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "glmnet",
+#   trControl = control,
+#   preProcess = c("medianImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7226246, alpha = 0.1,  lambda = 0.02708264
+
+#random forest models
+# rf_model_median <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("medianImpute", "center", "scale"),
+#   na.action = na.pass,
+#   importance = 'impurity'
+# )
+#ROC = 0.7366
+
+# rf_model_nzv_median <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("nzv","medianImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7377
+
+# rf_model_zv_median <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("zv","medianImpute", "center", "scale"),
+#   na.action = na.pass,
+#   importance = 'impurity'
+# )
+#ROC = 0.7391
+
+# rf_model_pca_median <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("zv","medianImpute", "center", "scale", "pca"),
+#   na.action = na.pass
+# )
+#ROC = 0.7201
+
+# rf_model_knn <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("knnImpute", "center", "scale"),
+#   na.action = na.pass
+# )
+#ROC = 0.7411
+
+# rf_model_nzv_knn <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("nzv", "knnImpute", "center", "scale"),
+#   na.action = na.pass,
+#   importance = 'impurity'
+# )
+#ROC = 0.7352
+
+# rf_model_zv_knn <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("zv" ,"knnImpute", "center", "scale"),
+#   na.action = na.pass,
+#   importance = 'impurity'
+# )
+#ROC = 0.7427
+
+# rf_model_pca_knn <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "ranger",
+#   trControl = control,
+#   preProcess = c("zv","knnImpute", "center", "scale", "pca"),
+#   na.action = na.pass
+# )
+#ROC = 0.7141
+
+#gradient boosting
+# gbm_model <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "gbm",
+#   train.fraction = 0.5,
+#   trControl = control
+# )
+#ROC = 0.7209 
+
+# print(varImp(rf_model_zv_knn))
+
+```
+
+```{r Real World Validation, eval=FALSE, include=FALSE}
+
+#creating prediction output table
+diabetes_rw_pred <- predict(rf_model_zv_knn, newdata = diabetes_rw, type = "prob")
+diabetes_rw_pred <- diabetes_rw_pred %>%
+  mutate(prediction = ifelse(Yes > 0.5, "Yes", "No"))
+
+#separate table for final counts
+PAID_high_risk_pred <- diabetes_rw_pred %>%
+  group_by(prediction) %>%
+  summarize(total = n())
+
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or
+by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output
+will be saved alongside it (click the *Preview* button or press
+*Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the
+editor. Consequently, unlike *Knit*, *Preview* does not run any R code
+chunks. Instead, the output of the chunk when it was last run in the
+editor is displayed.
