@@ -383,44 +383,58 @@ control <- trainControl(
 ```{r Models}
 #generating and evaluating multiple models
 
-<<<<<<< HEAD
-mbm <- microbenchmark(
-  #glm models
-  "glm_model_median" = {glm_model_median <- train(
-=======
-mbm <- microbenchmark("glm_model_median" = {glm_model_median <- train(
->>>>>>> 2414d97447e3a142ff2267179f027eeebf2ecbaa
+#benchmarked top 4 models
+
+mbm2 <- microbenchmark(
+  "glm_zv_knn" = {glm_model_zv_knn <- train(
   PAID_high_risk ~ .,
   data = diabetes_train,
   metric = "ROC",
   method = "glm",
   trControl = control,
+  preProcess = c("zv", "knnImpute", "center", "scale"),
+  na.action = na.pass
+)},
+  "glmnet" = {glmnet_model <- train(
+  PAID_high_risk ~ .,
+  data = diabetes_train,
+  metric = "ROC",
+  method = "glmnet",
+  trControl = control,
   preProcess = c("medianImpute", "center", "scale"),
   na.action = na.pass
-<<<<<<< HEAD
 )},
-"glm_model_nzv_median" = {glm_model_nzv_median <- train(
-=======
-)}
-)
+  "rf_model_zv_knn" = {rf_model_zv_knn <- train(
+  PAID_high_risk ~ .,
+  data = diabetes_train,
+  metric = "ROC",
+  method = "ranger",
+  trControl = control,
+  preProcess = c("zv" ,"knnImpute", "center", "scale"),
+  na.action = na.pass,
+  importance = 'impurity'
+)},
+  "gbm_model" = {gbm_model <- train(
+  PAID_high_risk ~ .,
+  data = diabetes_train,
+  metric = "ROC",
+  method = "gbm",
+  train.fraction = 0.5,
+  trControl = control
+)},
+  times = 10)
+
 
 #glm models
-glm_model_median <- train(
->>>>>>> 2414d97447e3a142ff2267179f027eeebf2ecbaa
-  PAID_high_risk ~ .,
-  data = diabetes_train,
-  metric = "ROC",
-  method = "glm",
-  trControl = control,
-<<<<<<< HEAD
-  preProcess = c("nzv", "medianImpute", "center", "scale"),
-  na.action = na.pass
-)}
-=======
-  preProcess = c("medianImpute", "center", "scale"),
-  na.action = na.pass
->>>>>>> 2414d97447e3a142ff2267179f027eeebf2ecbaa
-)
+# glm_model_median <- train(
+#   PAID_high_risk ~ .,
+#   data = diabetes_train,
+#   metric = "ROC",
+#   method = "glm",
+#   trControl = control,
+#   preProcess = c("medianImpute", "center", "scale"),
+#   na.action = na.pass
+# )
 #ROC = 0.7182
 
 # glm_model_nzv_median <- train(
