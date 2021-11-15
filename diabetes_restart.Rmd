@@ -173,11 +173,11 @@ the same missing values as their parent columns.
 However, the remaining missing values are of unknown nature. The raw
 dataset did not provide any guidance on the interpretation of these
 missing values. Dropping observations with any missing values will
-deplete the dataset drastically. One-hot encoding will be the better
+deplete the dataset drastically. One-hot encoding the variables will be the better
 option to pursue here, including "variable_NA" columns to possibly
 identify any other variables with missing not at random values.
 
-```{r dimensions}
+```{r dimensions, message=FALSE}
 #dimensions of data frame
 dim(diabetes_recoded)
 
@@ -259,7 +259,7 @@ diabetes_recoded %>%
 
 ## Model Development
 
-```{r Treating}
+```{r Dataset Treatment}
 #creating separate data frame for response variable
 diabetes_treated_y <- diabetes_recoded %>%
   select(PAID_high_risk)
@@ -345,6 +345,12 @@ missing_values_treated <- diabetes_treated_x %>%
 
 ```
 
+Prior to modeling the data, the dataset will have to be treated.As discussed earlier, the variables in the dataset will be one-hot encoded to address the many missing values in the dataset without dropping observations.The dataset will be split into two tables: one containing predictor variables and the other containing only the response variable, PAID_high_risk. The table of predictor variables needed to be modified to conduct logistic regression. 
+
+To do so, the predictor variables were grouped by character variables, which consist of survey questions indicating status with Y/N/NA answers (e.g. whether the participant has diabetes) and ordinal variables, which consist of survey questions with answers on a spectrum (e.g. how many days in a week does the participant exercise). For the purposes of logistic regression modeling and to reduce the number of dummy columns, the answers to the ordinal variables were releveled to follow "low, medium, high" scoring. The character and ordinal variable tables were then converted so that each variable had a column for each possible response, including NA values. The characters and ordinals tables were joined together to make a treated table of all predictors.
+
+
+
 ```{r Modeling Prep}
 #creating training set and test set
 
@@ -380,7 +386,11 @@ control <- trainControl(
 )
 ```
 
-```{r Models}
+The treated predictors table was joined with the response table. The training dataset consisted of all participants with diabetes and a valid PAID score. The test dataset comprises all participants without diabetes or do not have a valid status.
+
+Since the training dataset only contains 621 observations, each model will be trained using repeated cross validation 10 times with 5 repeats.
+
+```{r Model Generation and Evaluation}
 #generating and evaluating multiple models
 
 #benchmarked top 4 models
@@ -612,7 +622,7 @@ mbm2 <- microbenchmark(
 
 ```
 
-```{r Real World Validation, eval=FALSE, include=FALSE}
+```{r Model Implementation & Real World Validation, eval=FALSE, include=FALSE}
 
 #creating prediction output table
 diabetes_rw_pred <- predict(rf_model_zv_knn, newdata = diabetes_rw, type = "prob")
