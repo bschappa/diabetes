@@ -37,10 +37,8 @@ UConn](https://www.huskyhealthct.org/providers/provider_postings/diabetes/PAID_p
 library(tidyverse)
 library(fastDummies)
 library(caret)
-library(magrittr)
 library(MLeval)
 library(microbenchmark)
-library(tictoc)
 
 set.seed(17)
 
@@ -122,6 +120,7 @@ data_dictionary <- tribble(
   "has_pcp", "Does the participant have a primary care medical home?", "character",
   "low_income", "Does the participant qualify for insurance for low income individuals?","character"
   )
+data_dictionary
 
 ```
 
@@ -259,7 +258,7 @@ diabetes_recoded %>%
 
 ## Model Development
 
-```{r Dataset Treatment}
+```{r Dataset Treatment, include=FALSE}
 #creating separate data frame for response variable
 diabetes_treated_y <- diabetes_recoded %>%
   select(PAID_high_risk)
@@ -388,7 +387,7 @@ control <- trainControl(
 
 The treated predictors table was joined with the response table. The training dataset consisted of all participants with diabetes and a valid PAID score. The test dataset comprises all participants without diabetes or do not have a valid status.
 
-Since the training dataset only contains 621 observations, each model will be trained using repeated cross validation 10 times with 5 repeats.yes
+Since the training dataset only contains 621 observations, each model will be trained using repeated cross validation 10 times with 5 repeats.
 
 ```{r Model Generation and Evaluation, include=FALSE}
 #generating and evaluating multiple models
@@ -622,9 +621,11 @@ mbm2 <- microbenchmark(
 
 ```
 
+Four types of models (generalized linear regression models, generalized linear models combined with lasso and ridge regression, random forests, and gradient boosting) were generated and tested. Multiple glm and rf models were tested, including median vs. kNN imputation of missing values and removal of any zero variance or near zero variance predictors. Models were initially evaluated by their AUC-ROC values. The best model from each type was then compared against each other by how long the scripts for each model to run 10 times.
 
+The random forest model with kNN imputation and removal of zero variance predictors had the highest AUC-ROC value of 0.7427. However, the time to run this random forest model was 3x that of the generalized linear models (glm_zv_knn and glmnet). Ultimately, the glm model with kNN imputation and zero variance predictors removed was selected as it was faster than the glmnet with a negligible difference in AUC-ROC values (0.7206 vs. 0.7226).
 
-```{r Model Implementation & Real World Validation, eval=FALSE, include=FALSE}
+```{r Model Implementation & Real World Validation, include=FALSE}
 
 #creating prediction output table
 diabetes_rw_pred <- predict(glm_model_zv_knn, newdata = diabetes_rw, type = "prob")
