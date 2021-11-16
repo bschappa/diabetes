@@ -390,7 +390,7 @@ The treated predictors table was joined with the response table. The training da
 
 Since the training dataset only contains 621 observations, each model will be trained using repeated cross validation 10 times with 5 repeats.yes
 
-```{r Model Generation and Evaluation}
+```{r Model Generation and Evaluation, include=FALSE}
 #generating and evaluating multiple models
 
 #benchmarked top 4 models
@@ -622,10 +622,12 @@ mbm2 <- microbenchmark(
 
 ```
 
+
+
 ```{r Model Implementation & Real World Validation, eval=FALSE, include=FALSE}
 
 #creating prediction output table
-diabetes_rw_pred <- predict(rf_model_zv_knn, newdata = diabetes_rw, type = "prob")
+diabetes_rw_pred <- predict(glm_model_zv_knn, newdata = diabetes_rw, type = "prob")
 diabetes_rw_pred <- diabetes_rw_pred %>%
   mutate(prediction = ifelse(Yes > 0.5, "Yes", "No"))
 
