@@ -388,7 +388,7 @@ control <- trainControl(
 
 The treated predictors table was joined with the response table. The training dataset consisted of all participants with diabetes and a valid PAID score. The test dataset comprises all participants without diabetes or do not have a valid status.
 
-Since the training dataset only contains 621 observations, each model will be trained using repeated cross validation 10 times with 5 repeats.
+Since the training dataset only contains 621 observations, each model will be trained using repeated cross validation 10 times with 5 repeats.yes
 
 ```{r Model Generation and Evaluation}
 #generating and evaluating multiple models
