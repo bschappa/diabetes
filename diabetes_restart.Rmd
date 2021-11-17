@@ -617,11 +617,12 @@ mbm2 <- microbenchmark(
 # )
 #ROC = 0.7209 
 
+autoplot(mbm2)
 ```
 
 Four types of models (generalized linear regression models, generalized linear models combined with lasso and ridge regression, random forests, and gradient boosting) were generated and tested. Multiple glm and rf models were tested, including median vs. kNN imputation of missing values and removal of any zero variance or near zero variance predictors. Models were initially evaluated by their AUC-ROC values. The best model from each type was then compared against each other by how long the scripts for each model to run 10 times.
 
-The random forest model with kNN imputation and removal of zero variance predictors had the highest AUC-ROC value of 0.7427. However, the time to run this random forest model was 3x that of the generalized linear models (glm_zv_knn and glmnet). Ultimately, the glm model with kNN imputation and zero variance predictors removed was selected as it was faster than the glmnet with a negligible difference in AUC-ROC values (0.7206 vs. 0.7226).
+The random forest model with kNN imputation and removal of zero variance predictors had the highest AUC-ROC value of 0.7427. However, the time to run this random forest model was 3x that of the generalized linear models (glm_zv_knn and glmnet). Ultimately, the glm model with kNN imputation and zero variance predictors removed was selected as it was faster than the glmnet with a negligible difference in AUC-ROC values (0.7206 vs. 0.7226). Generally, models with AUC-ROC scores between 0.70-0.80 are acceptable.
 
 ```{r Model Implementation & Real World Validation, include=FALSE}
 
@@ -635,14 +636,17 @@ PAID_high_risk_pred <- diabetes_rw_pred %>%
   group_by(prediction) %>%
   summarize(total = n())
 
+#variable importance of glm model
 print(varImp(glm_model_zv_knn))
 
 ```
 
 The test set, diabetes_rw, contains all participants of the survey who did not have a confirmed diabetes diagnosis (diabetes = No, NA). The glm model with kNN imputation and without zero variance predictors will be used on the test dataset once to predict how many participants would be considered high-risk if they theoretically had diabetes.
 
-There was no available information from the data source regarding the timing of the blood test for diabetes for the participants. Unlike certain viral antibody tests that confirm if a patient has been exposed to a virus in their lifetime (e.g. chickenpox, Epstein-Barr virus), a Type 2 diabetes blood test does not rule out future development of the illness. By that logic, the participants of this survey could potentially develop diabetes in the future. Understanding the indicators that contribute to a high PAID score could help identify patients who could be high-risk diabetic patients. Given the high annual cost of diabetes treatment in the United States, addressing socioeconomic and behavioral predictors of high-risk diabetes could help reduce economic and social burdens on both patients and health systems.
+The glm model indicates that 658 of the 957 observations in the test dataset would be classified with a high risk PAID score if they have diabetes and assuming no other status changes. That is approximately 69% of the test dataset.
 
+### Discussion
 
+There was no available information from the data source regarding when the participants had their blood test for diabetes conducted or if the PAID questionnaire was completed before or after the educational program. Unlike certain viral antibody tests that confirm if a patient has been exposed to a virus in their lifetime (e.g. chickenpox, Epstein-Barr virus), a Type 2 diabetes blood test does not rule out future development of the illness. By that logic, the participants of this survey could potentially develop diabetes in the future. Understanding the indicators that contribute to a high PAID score could help identify patients who could be high-risk diabetic patients. Furthermore, Type 2 diabetes is a chronic illness with no cure as of today. Given the high annual cost of diabetes treatment in the United States, addressing socioeconomic and behavioral predictors of high-risk diabetes could help reduce economic and social burdens on both patients and health systems; in this case, this would concern Austin, TX.
 
-
+This case study was limited by the relatively small size of the dataset and its many missing values. Missing values can be imputed, but having more observations would help improve model development. Gathering more data from the diabetes class sessions within Austin, TX or similar programs across the United States would address this issue.
