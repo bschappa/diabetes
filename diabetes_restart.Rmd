@@ -617,8 +617,6 @@ mbm2 <- microbenchmark(
 # )
 #ROC = 0.7209 
 
-# print(varImp(rf_model_zv_knn))
-
 ```
 
 Four types of models (generalized linear regression models, generalized linear models combined with lasso and ridge regression, random forests, and gradient boosting) were generated and tested. Multiple glm and rf models were tested, including median vs. kNN imputation of missing values and removal of any zero variance or near zero variance predictors. Models were initially evaluated by their AUC-ROC values. The best model from each type was then compared against each other by how long the scripts for each model to run 10 times.
@@ -637,17 +635,14 @@ PAID_high_risk_pred <- diabetes_rw_pred %>%
   group_by(prediction) %>%
   summarize(total = n())
 
+print(varImp(glm_model_zv_knn))
 
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or
-by pressing *Ctrl+Alt+I*.
+The test set, diabetes_rw, contains all participants of the survey who did not have a confirmed diabetes diagnosis (diabetes = No, NA). The glm model with kNN imputation and without zero variance predictors will be used on the test dataset once to predict how many participants would be considered high-risk if they theoretically had diabetes.
 
-When you save the notebook, an HTML file containing the code and output
-will be saved alongside it (click the *Preview* button or press
-*Ctrl+Shift+K* to preview the HTML file).
+There was no available information from the data source regarding the timing of the blood test for diabetes for the participants. Unlike certain viral antibody tests that confirm if a patient has been exposed to a virus in their lifetime (e.g. chickenpox, Epstein-Barr virus), a Type 2 diabetes blood test does not rule out future development of the illness. By that logic, the participants of this survey could potentially develop diabetes in the future. Understanding the indicators that contribute to a high PAID score could help identify patients who could be high-risk diabetic patients. Given the high annual cost of diabetes treatment in the United States, addressing socioeconomic and behavioral predictors of high-risk diabetes could help reduce economic and social burdens on both patients and health systems.
 
-The preview shows you a rendered HTML copy of the contents of the
-editor. Consequently, unlike *Knit*, *Preview* does not run any R code
-chunks. Instead, the output of the chunk when it was last run in the
-editor is displayed.
+
+
+
