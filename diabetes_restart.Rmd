@@ -139,7 +139,9 @@ self-explanatory, while some are open to interpretation. I have defined
 the variables in a data dictionary below, as one was not provided with
 the dataset. For the purposes of my analysis, I have created three
 additional categorical variables, which I have also defined in the data
-dictionary. 'has_pcp' is a simplification of the 'medical_home'
+dictionary.
+
+'has_pcp' is a simplification of the 'medical_home'
 variable. It is not particularly important which specific clinic that a
 participant goes for their primary care, but rather that they *do* have
 a primary care provider with whom they can follow up regularly over
@@ -344,7 +346,7 @@ missing_values_treated <- diabetes_treated_x %>%
 
 ```
 
-Prior to modeling the data, the dataset will have to be treated.As discussed earlier, the variables in the dataset will be one-hot encoded to address the many missing values in the dataset without dropping observations.The dataset will be split into two tables: one containing predictor variables and the other containing only the response variable, PAID_high_risk. The table of predictor variables needed to be modified to conduct logistic regression. 
+Prior to modeling the data, the dataset will have to be treated. As discussed earlier, the variables in the dataset will be one-hot encoded to address the many missing values in the dataset without dropping observations.The dataset will be split into two tables: one containing predictor variables and the other containing only the response variable, PAID_high_risk. The table of predictor variables needed to be modified to conduct logistic regression. 
 
 To do so, the predictor variables were grouped by character variables, which consist of survey questions indicating status with Y/N/NA answers (e.g. whether the participant has diabetes) and ordinal variables, which consist of survey questions with answers on a spectrum (e.g. how many days in a week does the participant exercise). For the purposes of logistic regression modeling and to reduce the number of dummy columns, the answers to the ordinal variables were releveled to follow "low, medium, high" scoring. The character and ordinal variable tables were then converted so that each variable had a column for each possible response, including NA values. The characters and ordinals tables were joined together to make a treated table of all predictors.
 
