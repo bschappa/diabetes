@@ -143,9 +143,9 @@ dictionary.
 
 'has_pcp' is a simplification of the 'medical_home'
 variable. It is not particularly important which specific clinic that a
-participant goes for their primary care, but rather that they *do* have
+participant goes to for their primary care, but rather that they *do* have
 a primary care provider with whom they can follow up regularly over
-time. Emergency rooms are acute care providers, and not primary care
+time. Emergency rooms are acute care providers, not primary care
 providers.
 
 'low_income' is an indicator variable which describes if the participant
@@ -186,7 +186,7 @@ dim(diabetes_recoded)
 missing_values <- diabetes_recoded %>% 
   select(everything()) %>%
   summarize_all(funs(sum(is.na(.))))
-
+missing_values
 
 ```
 
