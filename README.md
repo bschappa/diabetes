@@ -90,7 +90,7 @@ The test set, diabetes_rw, contains all participants of the survey who did not h
 
 The glm model indicates that 658 of the 957 observations in the test dataset would be classified with a high risk PAID score if they have diabetes and assuming no other status changes. That is approximately 69% of the test dataset.
 
-### Discussion
+## Discussion
 
 There was no available information from the data source regarding when the participants had their blood test for diabetes conducted or if the PAID questionnaire was completed before or after the educational program. Unlike certain viral antibody tests that confirm if a patient has been exposed to a virus in their lifetime (e.g. chickenpox, Epstein-Barr virus), a Type 2 diabetes blood test does not rule out future development of the illness. By that logic, the participants of this survey could potentially develop diabetes in the future. Understanding the indicators that contribute to a high PAID score could help identify patients who could be high-risk diabetic patients. Furthermore, Type 2 diabetes is a chronic illness with no cure as of today. Given the high annual cost of diabetes treatment in the United States, addressing socioeconomic and behavioral predictors of high-risk diabetes could help reduce economic and social burdens on both patients and health systems; in this case, this would concern Austin, TX.
 
