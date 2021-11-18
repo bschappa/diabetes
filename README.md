@@ -27,6 +27,7 @@ diabetes. The questionnaire is scored on a scale from 0-100; scores of
 scores below 10 with poor glucose control are associated with patients
 in denial of their condition. ([PAID Questionnaire UConn](https://www.huskyhealthct.org/providers/provider_postings/diabetes/PAID_problem_areas_in_diabetes_questionnaire.pdf)).
 
+##Exploratory Data Analysis
 ### Dataset description
 
 The data for this project was obtained through the [Datacamp Career Hub
@@ -36,7 +37,7 @@ through their Diabetes Self-Management Education program. Each
 observation from the data set are responses from individual participants
 who completed the program.
 
-The raw dataset contains 1688 observations and21 unique variables, 3 of which are numeric and 18 that are categorical. The majority of the variables appear to be self-explanatory, while some are open to interpretation. I have defined
+The raw dataset contains 1688 observations and 21 unique variables, 3 of which are numeric and 18 that are categorical. The majority of the variables appear to be self-explanatory, while some are open to interpretation. I have defined
 the variables in a data dictionary below, as one was not provided with
 the dataset. For the purposes of my analysis, I have created three
 additional categorical variables, which I have also defined in the data
@@ -93,5 +94,5 @@ The glm model indicates that 658 of the 957 observations in the test dataset wou
 
 There was no available information from the data source regarding when the participants had their blood test for diabetes conducted or if the PAID questionnaire was completed before or after the educational program. Unlike certain viral antibody tests that confirm if a patient has been exposed to a virus in their lifetime (e.g. chickenpox, Epstein-Barr virus), a Type 2 diabetes blood test does not rule out future development of the illness. By that logic, the participants of this survey could potentially develop diabetes in the future. Understanding the indicators that contribute to a high PAID score could help identify patients who could be high-risk diabetic patients. Furthermore, Type 2 diabetes is a chronic illness with no cure as of today. Given the high annual cost of diabetes treatment in the United States, addressing socioeconomic and behavioral predictors of high-risk diabetes could help reduce economic and social burdens on both patients and health systems; in this case, this would concern Austin, TX.
 
-This case study was limited by the relatively small size of the dataset and its many missing values. Missing values can be imputed, but having more observations would help improve model development. Gathering more data from the diabetes class sessions within Austin, TX or similar programs across the United States would address this issue.
+This case study was limited by the relatively small size of the dataset and its many missing values. Having more observations would help improve model development. Gathering more data from the diabetes class sessions within Austin, TX or similar programs across the United States would address this issue. Model development could improve by reducing the number of variables in the model. Depending on the quantity of the additional data added, a different type of model could be used altogether. A generalized linear regression model was a good model in balancing model run time and AUC-ROC scores. However, with more data, random forests or gradient boosted models may have the advantage.
 
