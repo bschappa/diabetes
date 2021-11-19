@@ -28,6 +28,7 @@ scores below 10 with poor glucose control are associated with patients
 in denial of their condition. ([PAID Questionnaire UConn](https://www.huskyhealthct.org/providers/provider_postings/diabetes/PAID_problem_areas_in_diabetes_questionnaire.pdf)).
 
 ##Exploratory Data Analysis
+
 ### Dataset description
 
 The data for this project was obtained through the [Datacamp Career Hub
@@ -44,7 +45,7 @@ additional categorical variables, which I have also defined in the data
 dictionary.
 
 'has_pcp' is a simplification of the 'medical_home'
-variable. It is not particularly important which specific clinic that a
+variable, which it replaces. It is not particularly important which specific clinic that a
 participant goes for their primary care, but rather that they *do* have
 a primary care provider with whom they can follow up regularly over
 time. Emergency rooms are acute care providers, and not primary care
@@ -61,7 +62,7 @@ control, it is difficult to assess whether a participant is in denial of
 their condition. A 'PAID_score' \>= 40 is considered to be high risk, as
 it is shown to indicate emotional burnout in a participant. For this
 analysis, 'PAID_high_risk' will be the response variable for
-classification.
+classification, and replaces 'PAID_score'.
 
 There are many variables with missing values. Some of these values are missing not at random and can be explained. Cases where the participant does not have diabetes will not have a PAID score, and can not have their risk evaluated. Similarly, variables such as 'has_pcp' and 'low_income' are dependent on
 'medical_home' and 'insurance', respectively, and will therefore have
@@ -72,6 +73,8 @@ dataset did not provide any guidance on the interpretation of these
 missing values. Dropping observations with any missing values will
 deplete the dataset drastically. One-hot encoding the variables will be the better option to pursue here, including "variable_NA" columns to possibly
 identify any other variables with missing not at random values.
+
+5 categorical variables will be removed prior to modeling. 3 are not pertinent to predicting diabetes (class, language of the diabetes class, year) and 2 are redundant and replaced with other categorical variables (medical_home, PAID_score). Classification models will be used to approach this case study. They will be evaluated by AUC-ROC scores and model run time. AUC-ROC scores are preferred here due to the imbalance of values of each PAID_high_risk group. Overfitting is a concern due to the small size of the training set, and so repeated cross-validation will be used to generate the models.
 
 ## Model Development
 Prior to modeling the data, the dataset will have to be treated. As discussed earlier, the variables in the dataset will be one-hot encoded to address the many missing values in the dataset without dropping observations.The dataset will be split into two tables: one containing predictor variables and the other containing only the response variable, PAID_high_risk. The table of predictor variables needed to be modified to conduct logistic regression. 
@@ -84,7 +87,7 @@ Since the training dataset only contains 621 observations, each model will be tr
 
 Four types of models (generalized linear regression models, generalized linear models combined with lasso and ridge regression, random forests, and gradient boosting) were generated and tested. Multiple glm and rf models were tested, including median vs. kNN imputation of missing values and removal of any zero variance or near zero variance predictors. Models were initially evaluated by their AUC-ROC values. The best model from each type was then compared against each other by how long the scripts for each model to run 10 times.
 
-The random forest model with kNN imputation and removal of zero variance predictors had the highest AUC-ROC value of 0.7427. However, the time to run this random forest model was 3x that of the generalized linear models (glm_zv_knn and glmnet). Ultimately, the glm model with kNN imputation and zero variance predictors removed was selected as it was faster than the glmnet with a negligible difference in AUC-ROC values (0.7206 vs. 0.7226). Generally, models with AUC-ROC scores between 0.70-0.80 are acceptable.
+The random forest model with kNN imputation and removal of zero variance predictors had the highest AUC-ROC value of 0.7427. However, the run time of this random forest model was 3x that of the generalized linear models (glm_zv_knn and glmnet). Ultimately, the glm model with kNN imputation and zero variance predictors removed was selected as it was faster than the glmnet with a negligible difference in AUC-ROC values (0.7206 vs. 0.7226). Generally, models with AUC-ROC scores between 0.70-0.80 are acceptable.
 
 The test set, diabetes_rw, contains all participants of the survey who did not have a confirmed diabetes diagnosis (diabetes = No, NA). The glm model with kNN imputation and without zero variance predictors will be used on the test dataset once to predict how many participants would be considered high-risk if they theoretically had diabetes.
 
