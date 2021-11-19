@@ -27,7 +27,7 @@ diabetes. The questionnaire is scored on a scale from 0-100; scores of
 scores below 10 with poor glucose control are associated with patients
 in denial of their condition. ([PAID Questionnaire UConn](https://www.huskyhealthct.org/providers/provider_postings/diabetes/PAID_problem_areas_in_diabetes_questionnaire.pdf)).
 
-##Exploratory Data Analysis
+## Exploratory Data Analysis
 
 ### Dataset description
 
