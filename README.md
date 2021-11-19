@@ -1,6 +1,4 @@
-# diabetes
-
-Modeling High Risk PAID Scores of Participants in Austin, TX Diabetes Self-Management Program
+# Modeling High Risk PAID Scores of Participants in Austin, TX Diabetes Self-Management Program
 
 ## Project Motivation
 
